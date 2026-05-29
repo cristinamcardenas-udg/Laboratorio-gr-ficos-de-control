@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Widget: Control de Calidad - Galletas de Apio</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #2c3e50; }
+        .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .feedback { margin-top: 20px; padding: 15px; border-radius: 5px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .hint { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Laboratorio de Control de Calidad: Textura</h1>
+    <p><strong>Contexto:</strong> Producción de galletas con 20% de polvo de raíz de apio. La dureza es clave para la aceptación del consumidor [Nićetin et al., 2024].</p>
+    
+    <div class="controls">
+        <label>Selecciona un Escenario de Producción:</label>
+        <select id="scenario" onchange="updateChart()">
+            <option value="normal">Proceso Bajo Control (Estable)</option>
+            <option value="trend">Tendencia Ascendente (Desgaste de equipo)</option>
+            <option value="shift">Desplazamiento de Media (Cambio de lote de harina)</option>
+            <option value="cycle">Ciclos (Inestabilidad térmica en horno)</option>
+        </select>
+    </div>
+
+    <canvas id="controlChart"></canvas>
+
+    <div class="controls" style="margin-top:20px;">
+        <h3>Interpretación del Ingeniero:</h3>
+        <p>¿Qué decisión tomarías basándote en las Reglas de Western Electric?</p>
+        <button onclick="checkAnswer('continue')">Continuar Proceso</button>
+        <button onclick="checkAnswer('stop')">Detener y Ajustar</button>
+        <button onclick="checkAnswer('investigate')">Investigar Causa Asignable</button>
+    </div>
+
+    <div id="feedbackBox" class="feedback"></div>
+</div>
+
+<script>
+let chart;
+const ctx = document.getElementById('controlChart').getContext('2d');
+
+function generateData(type) {
+    const base = 3500; // Media referencial en Newtons
+    const labels = Array.from({length: 20}, (_, i) => `Lote ${i+1}`);
+    let values = [];
+
+    if(type === 'normal') {
+        values = labels.map(() => base + (Math.random() - 0.5) * 400);
+    } else if(type === 'trend') {
+        values = labels.map((_, i) => base + (i * 80) + (Math.random() - 0.5) * 200);
+    } else if(type === 'shift') {
+        values = labels.map((_, i) => i < 10 ? base + (Math.random()*200) : base + 600 + (Math.random()*200));
+    } else if(type === 'cycle') {
+        values = labels.map((_, i) => base + Math.sin(i) * 500);
+    }
+
+    return { labels, values };
+}
+
+function updateChart() {
+    const scenario = document.getElementById('scenario').value;
+    const data = generateData(scenario);
+    const mean = 3500;
+    const lsc = 4100;
+    const lic = 2900;
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                { label: 'Dureza (N)', data: data.values, borderColor: 'blue', fill: false, tension: 0.1 },
+                { label: 'LSC (4100N)', data: Array(20).fill(lsc), borderColor: 'red', borderDash: [5, 5], fill: false, pointRadius: 0 },
+                { label: 'Media (3500N)', data: Array(20).fill(mean), borderColor: 'green', borderDash: [2, 2], fill: false, pointRadius: 0 },
+                { label: 'LIC (2900N)', data: Array(20).fill(lic), borderColor: 'red', borderDash: [5, 5], fill: false, pointRadius: 0 }
+            ]
+        },
+        options: { scales: { y: { min: 2500, max: 5500 } } }
+    });
+    document.getElementById('feedbackBox').style.display = 'none';
+}
+
+function checkAnswer(decision) {
+    const scenario = document.getElementById('scenario').value;
+    const box = document.getElementById('feedbackBox');
+    box.style.display = 'block';
+
+    if(scenario === 'normal' && decision === 'continue') {
+        box.className = 'feedback success';
+        box.innerHTML = "<strong>¡Correcto!</strong> El proceso muestra variación aleatoria natural. No hay causas asignables.";
+    } else if(scenario !== 'normal' && decision === 'continue') {
+        box.className = 'feedback hint';
+        box.innerHTML = "<strong>Pista:</strong> Observa los puntos. ¿Hay algún patrón no aleatorio o puntos fuera de los límites (LSC/LIC)? Recuerda que la dureza aumentó significativamente al sustituir harina por apio[cite: 124].";
+    } else if(scenario === 'trend' && decision === 'investigate') {
+        box.className = 'feedback success';
+        box.innerHTML = "<strong>¡Excelente!</strong> Has detectado una tendencia. En ingeniería química, esto podría ser desgaste en las cuchillas de corte o cambios en la humedad del polvo de apio[cite: 619].";
+    } else {
+        box.className = 'feedback hint';
+        box.innerHTML = "Analiza de nuevo. Recuerda las reglas: 7 puntos seguidos de un lado de la media o un punto fuera de los límites de control.";
+    }
+}
+
+updateChart();
+</script>
+</body>
+</html>
